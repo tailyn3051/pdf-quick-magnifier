@@ -1,6 +1,6 @@
 # PDF Quick Magnifier
 
-A client-side web application to create magnified detail views (callouts) on your PDF files. Upload a PDF, select an area on any page, and click an empty spot to place a magnified version, complete with an arrow pointing to the source. All processing is done directly in your browser, ensuring your files remain private.
+Create magnified detail views (callouts) on your PDF files. Upload a PDF, select an area on any page, and click an empty spot to place a magnified version, complete with an arrow pointing to the source. All processing is done directly in your browser, ensuring your files remain private.
 
 ---
 
@@ -8,7 +8,10 @@ A client-side web application to create magnified detail views (callouts) on you
 
 - ✅ **Client-Side Processing:** Securely process files directly in your browser. No files are ever uploaded to a server.
 - ✨ **High-Resolution Rendering:** PDF pages are rendered at high quality, ensuring both the page and magnified callouts are crisp and clear.
-- ↔️ **Zoom & Pan:** Hold the `Alt` key to interact. Scroll to zoom and drag to pan, allowing for easy navigation and selection of precise details.
+- ↔️ **Advanced Navigation:**
+    - Use arrow keys (`↑`, `↓`, `←`, `→`) to pan the document.
+    - Hold `Alt` and scroll to zoom.
+    - Hold `Alt` and drag to pan.
 - ✨ **Reset View:** Middle-click anywhere on the page to instantly reset the zoom and pan.
 - ↩️ **Undo/Redo:** Easily correct mistakes with back and forward buttons for your annotations.
 - 🚫 **Cancel Selection:** Press the `Escape` key at any time during placement to cancel the current selection.
@@ -29,6 +32,7 @@ A client-side web application to create magnified detail views (callouts) on you
 
 1.  **Upload PDF:** Click to upload your PDF file. The pages will be rendered in the results panel.
 2.  **Navigate (Optional):**
+    - Use the arrow keys (`↑`, `↓`, `←`, `→`) to pan the view around the page.
     - Hold `Alt` and use your mouse wheel to zoom in and out.
     - Hold `Alt` and drag with your mouse to pan the view.
     - Middle-click on the page at any time to return to the default zoom and position.

@@ -30,6 +30,7 @@ const translations = {
     instruction1: 'Drag on a page to select an area.',
     instruction2: 'Move mouse to position the preview.',
     instruction3: 'Click to place the magnified view.',
+    instruction_move: 'Use arrow keys to pan the page.',
     instruction_zoom: 'Hold Alt + scroll to zoom.',
     instruction_pan: 'Hold Alt + drag to pan.',
     instruction_reset: 'Middle-click to reset view.',
@@ -64,6 +65,7 @@ const translations = {
     instruction1: '在頁面上拖曳以選取區域。',
     instruction2: '移動滑鼠以定位預覽。',
     instruction3: '點擊以放置放大視圖。',
+    instruction_move: '使用方向鍵平移頁面。',
     instruction_zoom: '按住 Alt + 滾動以縮放。',
     instruction_pan: '按住 Alt + 拖曳以平移。',
     instruction_reset: '按下滑鼠中鍵以重設視圖。',
@@ -355,8 +357,39 @@ const InteractivePage = ({
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Escape to cancel should only work in 'placing' mode.
             if (e.key === 'Escape' && interactionState === 'placing') {
                 cancelPlacing();
+                return; // Early return after handling
+            }
+
+            // Arrow key panning should work in 'idle' and 'placing' modes.
+            if (interactionState === 'idle' || interactionState === 'placing') {
+                const PAN_AMOUNT = 20;
+                let isArrowKey = false;
+                switch (e.key) {
+                    case 'ArrowUp':
+                        setTransform(prev => ({ ...prev, y: prev.y + PAN_AMOUNT }));
+                        isArrowKey = true;
+                        break;
+                    case 'ArrowDown':
+                        setTransform(prev => ({ ...prev, y: prev.y - PAN_AMOUNT }));
+                        isArrowKey = true;
+                        break;
+                    case 'ArrowLeft':
+                        setTransform(prev => ({ ...prev, x: prev.x + PAN_AMOUNT }));
+                        isArrowKey = true;
+                        break;
+                    case 'ArrowRight':
+                        setTransform(prev => ({ ...prev, x: prev.x - PAN_AMOUNT }));
+                        isArrowKey = true;
+                        break;
+                }
+                
+                // Prevent default browser action (like scrolling) for arrow keys
+                if (isArrowKey) {
+                    e.preventDefault();
+                }
             }
         };
 
@@ -877,10 +910,11 @@ const App: React.FC = () => {
                         <li>{t('instruction1')}</li>
                         <li>{t('instruction2')}</li>
                         <li>{t('instruction3')}</li>
-                        <li>{t('instruction_zoom')}</li>
-                        <li>{t('instruction_pan')}</li>
-                        <li>{t('instruction_reset')}</li>
                         <li>{t('instruction_cancel')}</li>
+                        <li className="instruction-divider">{t('instruction_zoom')}</li>
+                        <li>{t('instruction_pan')}</li>
+                        <li>{t('instruction_move')}</li>
+                        <li>{t('instruction_reset')}</li>
                     </ul>
                 </div>
             </div>
@@ -889,7 +923,7 @@ const App: React.FC = () => {
                     <button onClick={handleUndo} disabled={historyIndex === 0}>{t('undo')}</button>
                     <button onClick={handleRedo} disabled={historyIndex >= history.length - 1}>{t('redo')}</button>
                 </div>
-                <p className="version-info">ver-2.0</p>
+                <p className="version-info">ver-2.2</p>
             </div>
         </aside>
 

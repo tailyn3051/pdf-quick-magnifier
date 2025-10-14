@@ -24,18 +24,6 @@ A client-side web application to create magnified detail views (callouts) on you
 
 ---
 
-## 🛠️ Technology Stack
-
-This project is built with modern web technologies and runs entirely in the browser without a backend or complex build process.
-
-- **Frontend:** [React](https://react.dev/) (v19) & [TypeScript](https://www.typescriptlang.org/)
-- **In-Browser Transpilation:** [Babel Standalone](https://babeljs.io/docs/babel-standalone)
-- **PDF Processing Libraries:**
-    - [pdf.js](https://mozilla.github.io/pdf.js/): For reading and rendering PDF pages onto a canvas.
-    - [pdf-lib](https://pdf-lib.js.org/): For creating the final annotated PDF document from images.
-    - [JSZip](https://stuk.github.io/jszip/): For creating the `.zip` archive for bulk downloads.
-
----
 
 ## 🚀 How to Use
 
@@ -51,26 +39,3 @@ This project is built with modern web technologies and runs entirely in the brow
 7.  **Download:** Once you're finished, download your annotated files in your preferred format (ZIP or PDF).
 
 ---
-
-## 💻 Local Development
-
-**Critical Note:** This application uses modern JavaScript modules (`import`/`export`). For security reasons, web browsers do not allow these modules to be loaded from local files (`file:///...`). Therefore, you **must** use a simple local web server to run this application. Simply opening the `index.html` file by double-clicking it in your file explorer **will not work** and will result in a script or CORS error.
-
-1.  **Clone the repository:**
-    ```bash
-    git clone [your-repository-url]
-    ```
-
-2.  **Navigate to the project directory:**
-    ```bash
-    cd [your-project-directory]
-    ```
-
-3.  **Start a local server.**
-    If you have Python 3 installed, you can use this command in your terminal:
-    ```bash
-    python -m http.server
-    ```
-    Alternatively, you can use a tool like the "Live Server" extension for Visual Studio Code.
-
-4.  **Open your browser** and navigate to `http://localhost:8000` (or the port your server is running on).

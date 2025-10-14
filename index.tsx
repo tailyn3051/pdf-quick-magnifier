@@ -144,14 +144,62 @@ const InteractivePage = ({
     const [preview, setPreview] = useState<{ sourceRect: Rect; dataUrl: string } | null>(null);
     const [placementPos, setPlacementPos] = useState<Point | null>(null);
 
+    const getClampedTransform = useCallback((newTransform: Transform): Transform => {
+        if (!pdfPage || !viewportRef.current) {
+            return newTransform;
+        }
+
+        const pdfViewport = pdfPage.getViewport({ scale: newTransform.scale });
+        const scaledPdfWidth = pdfViewport.width;
+        const scaledPdfHeight = pdfViewport.height;
+
+        const containerWidth = viewportRef.current.clientWidth;
+        const containerHeight = viewportRef.current.clientHeight;
+
+        let minX, maxX, minY, maxY;
+
+        // Clamp X coordinate
+        if (scaledPdfWidth > containerWidth) {
+            minX = containerWidth - scaledPdfWidth;
+            maxX = 0;
+        } else {
+            // If page is narrower than container, center it.
+            minX = maxX = (containerWidth - scaledPdfWidth) / 2;
+        }
+
+        // Clamp Y coordinate
+        if (scaledPdfHeight > containerHeight) {
+            minY = containerHeight - scaledPdfHeight;
+            maxY = 0;
+        } else {
+            // If page is shorter than container, center it.
+            minY = maxY = (containerHeight - scaledPdfHeight) / 2;
+        }
+        
+        const clampedX = Math.max(minX, Math.min(maxX, newTransform.x));
+        const clampedY = Math.max(minY, Math.min(maxY, newTransform.y));
+
+        return { scale: newTransform.scale, x: clampedX, y: clampedY };
+
+    }, [pdfPage]);
+
     useEffect(() => {
         if (pdfDoc) {
             pdfDoc.getPage(pageIndex + 1).then(page => {
                  setPdfPage(page);
-                 const initialViewport = page.getViewport({ scale: 1 });
+                 
                  const containerWidth = viewportRef.current?.clientWidth || 600;
+                 const containerHeight = viewportRef.current?.clientHeight || 800;
+                 const initialViewport = page.getViewport({ scale: 1 });
                  const scale = containerWidth / initialViewport.width;
-                 setTransform({ scale: scale, x: 0, y: 0 });
+                 
+                 const scaledWidth = initialViewport.width * scale;
+                 const scaledHeight = initialViewport.height * scale;
+                 
+                 const x = containerWidth > scaledWidth ? (containerWidth - scaledWidth) / 2 : 0;
+                 const y = containerHeight > scaledHeight ? (containerHeight - scaledHeight) / 2 : 0;
+                 
+                 setTransform({ scale, x, y });
             });
         }
     }, [pdfDoc, pageIndex]);
@@ -226,32 +274,21 @@ const InteractivePage = ({
         const dpr = window.devicePixelRatio || 1;
         const rect = viewportEl.getBoundingClientRect();
         
-        // 1. Set canvas backing store size based on container size and device pixel ratio
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
-        
-        // 2. Scale the canvas context to account for DPR. All drawing operations from now on
-        // can be done in CSS pixels.
         ctx.scale(dpr, dpr);
 
-        // 3. Define the transform to map PDF coordinates (at scale 1) to the
-        // desired pan/zoom position on the canvas (in CSS pixels).
-        // CRITICAL FIX: Do NOT multiply by DPR here, as the context is already scaled.
         const pdfTransform = [transform.scale, 0, 0, transform.scale, transform.x, transform.y];
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 4. Render the PDF page with the calculated transform.
         await pdfPage.render({
             canvasContext: ctx,
-            viewport: pdfPage.getViewport({ scale: 1 }), // Get base viewport
-            transform: pdfTransform, // Apply our pan/zoom transform
+            viewport: pdfPage.getViewport({ scale: 1 }),
+            transform: pdfTransform,
             renderInteractiveForms: false,
         }).promise;
 
-        // 5. Draw the callouts on top of the PDF.
-        // We re-apply the same pan/zoom transform to the canvas so we can draw
-        // the callouts using their stored PDF coordinates.
         ctx.save();
         ctx.translate(transform.x, transform.y);
         ctx.scale(transform.scale, transform.scale);
@@ -357,36 +394,33 @@ const InteractivePage = ({
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Escape to cancel should only work in 'placing' mode.
             if (e.key === 'Escape' && interactionState === 'placing') {
                 cancelPlacing();
-                return; // Early return after handling
+                return;
             }
 
-            // Arrow key panning should work in 'idle' and 'placing' modes.
             if (interactionState === 'idle' || interactionState === 'placing') {
                 const PAN_AMOUNT = 20;
                 let isArrowKey = false;
                 switch (e.key) {
                     case 'ArrowUp':
-                        setTransform(prev => ({ ...prev, y: prev.y + PAN_AMOUNT }));
+                        setTransform(prev => getClampedTransform({ ...prev, y: prev.y + PAN_AMOUNT }));
                         isArrowKey = true;
                         break;
                     case 'ArrowDown':
-                        setTransform(prev => ({ ...prev, y: prev.y - PAN_AMOUNT }));
+                        setTransform(prev => getClampedTransform({ ...prev, y: prev.y - PAN_AMOUNT }));
                         isArrowKey = true;
                         break;
                     case 'ArrowLeft':
-                        setTransform(prev => ({ ...prev, x: prev.x + PAN_AMOUNT }));
+                        setTransform(prev => getClampedTransform({ ...prev, x: prev.x + PAN_AMOUNT }));
                         isArrowKey = true;
                         break;
                     case 'ArrowRight':
-                        setTransform(prev => ({ ...prev, x: prev.x - PAN_AMOUNT }));
+                        setTransform(prev => getClampedTransform({ ...prev, x: prev.x - PAN_AMOUNT }));
                         isArrowKey = true;
                         break;
                 }
                 
-                // Prevent default browser action (like scrolling) for arrow keys
                 if (isArrowKey) {
                     e.preventDefault();
                 }
@@ -397,22 +431,19 @@ const InteractivePage = ({
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [interactionState, cancelPlacing]);
+    }, [interactionState, cancelPlacing, getClampedTransform]);
 
-    // REWRITTEN COORDINATE CONVERSION LOGIC
     const clientToPdfCoords = (e: React.MouseEvent): Point => {
         const viewportRect = viewportRef.current!.getBoundingClientRect();
-        // 1. Get mouse position relative to the container (in CSS pixels)
         const mouseX = e.clientX - viewportRect.left;
         const mouseY = e.clientY - viewportRect.top;
-        // 2. Convert from container coordinates to PDF coordinates by "un-applying" the pan and zoom
         const pdfX = (mouseX - transform.x) / transform.scale;
         const pdfY = (mouseY - transform.y) / transform.scale;
         return { x: pdfX, y: pdfY };
     };
 
     const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (e.button === 1) { // Middle mouse button
+        if (e.button === 1) {
             e.preventDefault();
             resetTransform();
             return;
@@ -434,7 +465,7 @@ const InteractivePage = ({
         if (interactionState === 'panning') {
             const dx = e.clientX - lastMousePos.current.x;
             const dy = e.clientY - lastMousePos.current.y;
-            setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+            setTransform(prev => getClampedTransform({ ...prev, x: prev.x + dx, y: prev.y + dy }));
             lastMousePos.current = { x: e.clientX, y: e.clientY };
         } else if (interactionState === 'selecting' && selection) {
             const pos = clientToPdfCoords(e);
@@ -483,11 +514,9 @@ const InteractivePage = ({
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (interactionState !== 'placing' || !preview) return;
         
-        // The click position determines the center of the callout.
         const pos = clientToPdfCoords(e);
         const { sourceRect } = preview;
         
-        // Calculate the top-left corner (destPoint) from the center position.
         const destWidth = sourceRect.width * scaleFactor;
         const destHeight = sourceRect.height * scaleFactor;
         const destPoint = { x: pos.x - destWidth / 2, y: pos.y - destHeight / 2 };
@@ -508,30 +537,33 @@ const InteractivePage = ({
         const ZOOM_SENSITIVITY = 0.2;
         const zoomDirection = Math.sign(deltaY);
         const zoomFactor = 1 - zoomDirection * ZOOM_SENSITIVITY;
-        const newScale = Math.max(0.1, Math.min(20, transform.scale * zoomFactor));
-
-        // Get mouse position relative to the container (in CSS pixels)
-        const mouseX = clientX - viewportRect.left;
-        const mouseY = clientY - viewportRect.top;
         
-        // Get the PDF point under the mouse before zooming
-        const pointX = (mouseX - transform.x) / transform.scale;
-        const pointY = (mouseY - transform.y) / transform.scale;
-        
-        // Calculate the new pan (transform.x, transform.y) to keep that point under the mouse
-        const newX = mouseX - pointX * newScale;
-        const newY = mouseY - pointY * newScale;
-        
-        setTransform({ scale: newScale, x: newX, y: newY });
+        setTransform(prevTransform => {
+            const newScale = Math.max(0.1, Math.min(20, prevTransform.scale * zoomFactor));
+            const mouseX = clientX - viewportRect.left;
+            const mouseY = clientY - viewportRect.top;
+            
+            const pointX = (mouseX - prevTransform.x) / prevTransform.scale;
+            const pointY = (mouseY - prevTransform.y) / prevTransform.scale;
+            
+            const newX = mouseX - pointX * newScale;
+            const newY = mouseY - pointY * newScale;
+            
+            return getClampedTransform({ scale: newScale, x: newX, y: newY });
+        });
     };
     
-    const resetTransform = () => {
-        if (!pdfPage) return;
+    const resetTransform = useCallback(() => {
+        if (!pdfPage || !viewportRef.current) return;
+        
+        const containerWidth = viewportRef.current.clientWidth;
         const initialViewport = pdfPage.getViewport({ scale: 1 });
-        const containerWidth = viewportRef.current?.clientWidth || 600;
         const scale = containerWidth / initialViewport.width;
-        setTransform({ scale: scale, x: 0, y: 0 });
-    }
+        
+        // Let getClampedTransform handle centering
+        const newUnclampedTransform = { scale, x: 0, y: 0 };
+        setTransform(getClampedTransform(newUnclampedTransform));
+    }, [pdfPage, getClampedTransform]);
 
     const getCursor = () => {
         switch(interactionState) {
@@ -799,14 +831,11 @@ const App: React.FC = () => {
             const page = pages[i];
             const pdfJsPage = await pdfDoc.getPage(i + 1);
 
-            // CRITICAL FIX: Get the CropBox from the page. This defines the visible area
-            // and its offset from the MediaBox origin (bottom-left).
             const { x: cropX, y: cropY, height: cropHeight } = page.getCropBox() ?? page.getMediaBox();
             
             for (const callout of pageCallouts) {
                 const { sourceRect, destPoint, scale } = callout;
 
-                // 1. Generate snippet using pdf.js page object
                 const calloutDataUrl = await renderPdfSnippet(pdfJsPage, sourceRect, scale);
                 if (!calloutDataUrl) continue;
                 
@@ -816,12 +845,9 @@ const App: React.FC = () => {
                 const destWidth = sourceRect.width * scale;
                 const destHeight = sourceRect.height * scale;
                 
-                // 2. Transform UI coordinates (top-left origin) to PDF coordinates (bottom-left origin)
-                // accounting for the CropBox offset.
                 const destRectX = cropX + destPoint.x;
                 const destRectY = (cropY + cropHeight) - destPoint.y - destHeight;
 
-                // 3. Draw destination image
                 page.drawImage(pngImage, {
                     x: destRectX,
                     y: destRectY,
@@ -829,7 +855,6 @@ const App: React.FC = () => {
                     height: destHeight,
                 });
                 
-                // 4. Transform and draw arrow
                 const sourceCenter = { 
                     x: cropX + sourceRect.x + sourceRect.width / 2, 
                     y: (cropY + cropHeight) - (sourceRect.y + sourceRect.height / 2) 
@@ -841,7 +866,6 @@ const App: React.FC = () => {
                 
                 page.drawLine({ start: sourceCenter, end: destCenter, thickness: 3, color: arrowColor });
                 
-                // 5. Draw arrowhead
                 const angle = Math.atan2(destCenter.y - sourceCenter.y, destCenter.x - sourceCenter.x);
                 const arrowLength = 20;
                 const arrowPoint1 = { x: destCenter.x - arrowLength * Math.cos(angle - Math.PI / 6), y: destCenter.y - arrowLength * Math.sin(angle - Math.PI / 6) };
@@ -923,7 +947,7 @@ const App: React.FC = () => {
                     <button onClick={handleUndo} disabled={historyIndex === 0}>{t('undo')}</button>
                     <button onClick={handleRedo} disabled={historyIndex >= history.length - 1}>{t('redo')}</button>
                 </div>
-                <p className="version-info">ver-2.2</p>
+                <p className="version-info">ver-2.3</p>
             </div>
         </aside>
 

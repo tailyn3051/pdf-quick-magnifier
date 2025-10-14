@@ -1,5 +1,5 @@
 {
-  "name": "PDF Quick Magnifier ver-2.4",
-  "description": "An application to create magnified detail views (callouts) on PDF pages. Now with high-resolution rendering, constrained panning/zooming, undo/redo, and automatic centering.",
+  "name": "PDF Quick Magnifier ver-2.5",
+  "description": "An application to create magnified detail views (callouts) on PDF pages. Features high-res rendering, constrained panning/zooming, undo/redo, automatic centering, and placement constraints ensuring the entire callout fits within the page.",
   "requestFramePermissions": []
 }

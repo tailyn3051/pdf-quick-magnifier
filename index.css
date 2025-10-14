@@ -1,0 +1,546 @@
+/* index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --background-color: #121212;
+  --surface-color: #1e1e1e;
+  --primary-color: #6200ee;
+  --primary-variant-color: #3700b3;
+  --secondary-color: #03dac6;
+  --text-primary-color: #ffffff;
+  --text-secondary-color: #b3b3b3;
+  --border-color: #2c2c2c;
+  --error-color: #cf6679;
+  --success-color: #4caf50;
+  --font-family: 'Inter', sans-serif;
+  --border-radius: 8px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--text-primary-color);
+  line-height: 1.6;
+  overflow: hidden; /* Prevent the whole page from scrolling */
+}
+
+#root {
+  width: 100%;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Make container fill the viewport */
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 1rem 2rem; /* Add horizontal padding */
+    flex-shrink: 0; /* Prevent header from shrinking */
+    margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary-color);
+}
+
+.title span {
+    color: var(--primary-color);
+}
+
+.lang-toggle {
+    background-color: var(--surface-color);
+    color: var(--text-secondary-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.lang-toggle:hover {
+    background-color: var(--primary-color);
+    color: var(--text-primary-color);
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 2rem;
+  padding: 0 2rem 2rem 2rem; /* Add padding */
+  flex-grow: 1; /* Allow this to fill available space */
+  min-height: 0; /* Crucial for child element scrolling in flexbox */
+  position: relative; /* For positioning the toggle button */
+  transition: grid-template-columns 0.3s ease-in-out, gap 0.3s ease-in-out;
+}
+
+.panel-toggle-btn {
+  position: absolute;
+  top: 50%;
+  left: 320px; /* Width of the panel */
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  width: 24px;
+  height: 48px;
+  background-color: var(--surface-color);
+  color: var(--text-secondary-color);
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: bold;
+  padding-bottom: 2px;
+  transition: left 0.3s ease-in-out, background-color 0.2s, color 0.2s, transform 0.3s ease-in-out;
+}
+
+.panel-toggle-btn:hover {
+  background-color: var(--primary-color);
+  color: var(--text-primary-color);
+}
+
+
+.controls-panel {
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.2s ease-in-out;
+  overflow: hidden;
+}
+
+.panel-scroll-content {
+  flex: 1 1 0;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.panel-sticky-footer {
+  flex-shrink: 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.main-content.panel-hidden {
+  grid-template-columns: 0px 1fr;
+  gap: 0rem;
+}
+
+.main-content.panel-hidden .controls-panel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.main-content.panel-hidden .panel-toggle-btn {
+  left: 0;
+  transform: translate(0, -50%);
+  border-left: 1px solid var(--border-color);
+  border-right: none;
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.upload-section, .settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; /* Increased gap for better separation */
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  width: 100%;
+  padding: 1rem;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+.file-input-wrapper:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(98, 0, 238, 0.1);
+}
+
+.file-input-wrapper input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.file-name {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary-color);
+  word-break: break-all;
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setting label {
+  font-weight: 500;
+  color: var(--text-secondary-color);
+}
+
+.setting .value {
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--primary-color);
+}
+
+.history-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-grow: 1;
+}
+
+.history-controls button {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--surface-color);
+    color: var(--text-primary-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.history-controls button:hover:not(:disabled) {
+    background-color: var(--primary-color);
+}
+
+.history-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.instructions ul {
+    list-style-type: none;
+    padding-left: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary-color);
+}
+
+.instructions li {
+    margin-bottom: 0.5rem;
+    padding-left: 1.2rem;
+    position: relative;
+}
+
+.instructions li::before {
+    content: '✓';
+    color: var(--secondary-color);
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+
+.version-info {
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--text-secondary-color);
+  opacity: 0.6;
+}
+
+.results-panel {
+  background-color: var(--surface-color);
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  overflow-y: auto; /* Make the results panel scrollable */
+  display: flex; /* Use flexbox to manage placeholder centering */
+  flex-direction: column;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    flex-shrink: 0; /* Prevent header from shrinking when results are empty */
+}
+
+.results-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.download-all-btn, .download-pdf-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: var(--border-radius);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.download-all-btn {
+    background-color: var(--success-color);
+}
+
+.download-all-btn:hover {
+    background-color: #45a049;
+}
+
+.download-pdf-btn {
+    background-color: var(--primary-color);
+}
+
+.download-pdf-btn:hover {
+    background-color: var(--primary-variant-color);
+}
+
+.download-all-btn:disabled, .download-pdf-btn:disabled {
+    background-color: var(--border-color);
+    cursor: not-allowed;
+}
+
+
+.placeholder, .loader-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--text-secondary-color);
+  text-align: center;
+  flex-grow: 1; /* Allow placeholder to fill space in flex container */
+}
+
+.loader {
+  border: 4px solid var(--border-color);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.image-card {
+  position: relative;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
+  background-color: var(--background-color);
+  aspect-ratio: 8.5 / 11;
+}
+
+.interactive-page-viewport {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.pdf-canvas,
+.interaction-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.interaction-canvas {
+    z-index: 10; /* Ensures this canvas is on top for interactions */
+}
+
+.callout-preview {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 30;
+    background-color: var(--background-color);
+}
+
+.callout-preview img {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.zoom-controls {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    z-index: 20;
+    display: flex;
+    gap: 5px;
+    background-color: rgba(30, 30, 30, 0.8);
+    padding: 5px;
+    border-radius: var(--border-radius);
+}
+
+.zoom-controls button {
+    background-color: var(--surface-color);
+    color: var(--text-secondary-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    padding: 0;
+    text-align: center;
+    transition: background-color 0.2s;
+}
+
+.zoom-controls button:hover {
+    background-color: var(--primary-color);
+    color: var(--text-primary-color);
+}
+
+.zoom-controls button:last-child {
+    width: auto;
+    padding: 0 10px;
+}
+
+
+.page-number-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  z-index: 20;
+}
+
+.error-message {
+    background-color: var(--error-color);
+    color: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    margin: 0 2rem 1rem 2rem; /* Give it horizontal margin to match content */
+}
+
+
+/* Responsive */
+@media (max-width: 900px) {
+    body {
+        overflow: auto; /* Allow scrolling on smaller screens */
+    }
+    html, body, #root, .container {
+        height: auto;
+    }
+    .main-content {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        padding: 0 1rem 1rem 1rem; /* Adjust padding for smaller screens */
+    }
+    .controls-panel, .results-panel {
+        overflow-y: visible;
+    }
+    .results-panel {
+        min-height: 300px; /* Give it some min height on mobile */
+    }
+    .app-header {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    .panel-toggle-btn {
+      display: none; /* Hide toggle on mobile where layout is stacked */
+    }
+    .main-content.panel-hidden {
+      grid-template-columns: 1fr; /* Keep single column layout on mobile */
+    }
+}
+
+@media (max-width: 500px) {
+    .app-header {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+    .title {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+    .results-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .results-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .download-all-btn, .download-pdf-btn {
+        width: 100%;
+        text-align: center;
+    }
+}

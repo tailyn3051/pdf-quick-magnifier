@@ -12,6 +12,7 @@ Create magnified detail views (callouts) on your PDF files. Upload a PDF, select
     - Use arrow keys (`↑`, `↓`, `←`, `→`) to pan the document.
     - Hold `Alt` and scroll to zoom.
     - Hold `Alt` and drag to pan.
+- 🔒 **Constrained Panning:** The document cannot be panned outside of the viewport, so you'll never lose your place. Smaller pages are automatically centered.
 - ✨ **Reset View:** Middle-click anywhere on the page to instantly reset the zoom and pan.
 - ↩️ **Undo/Redo:** Easily correct mistakes with back and forward buttons for your annotations.
 - 🚫 **Cancel Selection:** Press the `Escape` key at any time during placement to cancel the current selection.
@@ -25,8 +26,8 @@ Create magnified detail views (callouts) on your PDF files. Upload a PDF, select
     - Download the complete document as a new, annotated PDF.
 - 📱 **Responsive Design:** Works seamlessly on both desktop and mobile devices.
 
----
 
+---
 
 ## 🚀 How to Use
 
@@ -41,5 +42,3 @@ Create magnified detail views (callouts) on your PDF files. Upload a PDF, select
 5.  **Cancel (Optional):** If you decide not to place the view after selecting an area, simply press the `Escape` key.
 6.  **Undo/Redo (Optional):** Use the Undo and Redo buttons in the left panel to correct any mistakes.
 7.  **Download:** Once you're finished, download your annotated files in your preferred format (ZIP or PDF).
-
----

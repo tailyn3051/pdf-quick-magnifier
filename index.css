@@ -288,6 +288,12 @@ h2 {
     top: 0;
 }
 
+.instructions li.instruction-divider {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
 
 .version-info {
   text-align: right;

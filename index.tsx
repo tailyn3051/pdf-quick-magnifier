@@ -143,6 +143,7 @@ const InteractivePage = ({
     const [renderingCallouts, setRenderingCallouts] = useState<Set<Callout>>(new Set());
     const [preview, setPreview] = useState<{ sourceRect: Rect; dataUrl: string } | null>(null);
     const [placementPos, setPlacementPos] = useState<Point | null>(null);
+    const [isPlacementValid, setIsPlacementValid] = useState(true);
 
     const getClampedTransform = useCallback((newTransform: Transform): Transform => {
         if (!pdfPage || !viewportRef.current) {
@@ -262,7 +263,7 @@ const InteractivePage = ({
             ctx.stroke();
         }
         ctx.restore();
-    }, [interactionState, selection, transform, preview, placementPos, scaleFactor]);
+    }, [interactionState, selection, transform, preview, placementPos]);
     
     const drawPdfLayer = useCallback(async () => {
         const canvas = pdfCanvasRef.current;
@@ -472,6 +473,24 @@ const InteractivePage = ({
             setSelection(prev => ({ ...prev!, endPoint: pos }));
         } else if (interactionState === 'placing') {
             setPlacementPos({x: e.clientX, y: e.clientY});
+            if (pdfPage && preview) {
+                const pos = clientToPdfCoords(e);
+                const pageViewport = pdfPage.getViewport({ scale: 1 });
+                
+                const { sourceRect } = preview;
+                const destWidth = sourceRect.width * scaleFactor;
+                const destHeight = sourceRect.height * scaleFactor;
+                const destX = pos.x - destWidth / 2;
+                const destY = pos.y - destHeight / 2;
+
+                const isValid = 
+                    destX >= 0 && 
+                    destY >= 0 && 
+                    (destX + destWidth) <= pageViewport.width && 
+                    (destY + destHeight) <= pageViewport.height;
+                
+                setIsPlacementValid(isValid);
+            }
         }
     };
     
@@ -504,6 +523,7 @@ const InteractivePage = ({
             if(dataUrl) {
                 setPreview({ sourceRect, dataUrl });
                 setPlacementPos({ x: e.clientX, y: e.clientY });
+                setIsPlacementValid(true); // Assume valid initially, mouseMove will correct
                 setInteractionState('placing');
             } else {
                 setInteractionState('idle');
@@ -512,11 +532,11 @@ const InteractivePage = ({
     };
     
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (interactionState !== 'placing' || !preview) return;
-        
+        if (interactionState !== 'placing' || !preview || !pdfPage || !isPlacementValid) return;
+
         const pos = clientToPdfCoords(e);
-        const { sourceRect } = preview;
         
+        const { sourceRect } = preview;
         const destWidth = sourceRect.width * scaleFactor;
         const destHeight = sourceRect.height * scaleFactor;
         const destPoint = { x: pos.x - destWidth / 2, y: pos.y - destHeight / 2 };
@@ -569,7 +589,7 @@ const InteractivePage = ({
         switch(interactionState) {
             case 'idle': return 'crosshair';
             case 'selecting': return 'crosshair';
-            case 'placing': return 'none';
+            case 'placing': return isPlacementValid ? 'none' : 'not-allowed';
             case 'panning': return 'grabbing';
             default: return 'default';
         }
@@ -583,13 +603,16 @@ const InteractivePage = ({
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={() => { if(interactionState === 'selecting' || interactionState === 'panning') setInteractionState('idle')}}
+            onMouseLeave={() => { 
+                if(interactionState === 'selecting' || interactionState === 'panning') setInteractionState('idle');
+                if(interactionState === 'placing') setIsPlacementValid(false);
+            }}
             onClick={handleClick}
             onWheel={handleWheel}
         >
             <canvas ref={pdfCanvasRef} className="pdf-canvas" />
             <canvas ref={interactionCanvasRef} className="interaction-canvas" />
-             {interactionState === 'placing' && preview && placementPos && (
+             {interactionState === 'placing' && preview && placementPos && isPlacementValid && (
                 <div 
                     className="callout-preview" 
                     style={{
@@ -947,7 +970,7 @@ const App: React.FC = () => {
                     <button onClick={handleUndo} disabled={historyIndex === 0}>{t('undo')}</button>
                     <button onClick={handleRedo} disabled={historyIndex >= history.length - 1}>{t('redo')}</button>
                 </div>
-                <p className="version-info">ver-2.3</p>
+                <p className="version-info">ver-2.5</p>
             </div>
         </aside>
 

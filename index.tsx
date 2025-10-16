@@ -176,8 +176,6 @@
         const viewportRef = useRef<HTMLDivElement>(null);
         const lastMousePos = useRef<Point>({ x: 0, y: 0 });
         const renderTimeoutRef = useRef<number | null>(null);
-        const animationFrameId = useRef<number | null>(null);
-        const lastMouseEventRef = useRef<{ clientX: number; clientY: number } | null>(null);
 
         const [page, setPage] = useState<any | null>(null);
         const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
@@ -276,19 +274,21 @@
         
         const drawPageLayer = useCallback(async () => {
             const canvas = canvasRef.current;
-            if (!canvas || !viewportRef.current || pageDimensions.width === 0) return;
-            const ctx = canvas.getContext('2d');
+            const viewport = viewportRef.current;
+            if (!canvas || !viewport || pageDimensions.width === 0) return;
+        
+            const offscreenCanvas = document.createElement('canvas');
+            const ctx = offscreenCanvas.getContext('2d');
             if (!ctx) return;
-
+        
             const dpr = window.devicePixelRatio || 1;
-            const rect = viewportRef.current.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
+            const rect = viewport.getBoundingClientRect();
+            offscreenCanvas.width = rect.width * dpr;
+            offscreenCanvas.height = rect.height * dpr;
             ctx.scale(dpr, dpr);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        
             const canvasTransform = [transform.scale, 0, 0, transform.scale, transform.x, transform.y];
-            
+        
             if (page) {
                 await page.render({ canvasContext: ctx, viewport: page.getViewport({ scale: 1 }), transform: canvasTransform }).promise;
             } else {
@@ -299,22 +299,22 @@
                 ctx.fillRect(0, 0, pageDimensions.width, pageDimensions.height);
                 ctx.restore();
             }
-
+        
             ctx.save();
             ctx.translate(transform.x, transform.y);
             ctx.scale(transform.scale, transform.scale);
-            
-            for(const callout of initialCallouts) {
+        
+            for (const callout of initialCallouts) {
                 const { sourceRect, destPoint, scale, sourcePageIndex } = callout;
                 const destWidth = sourceRect.width * scale;
                 const destHeight = sourceRect.height * scale;
                 const highResImage = highResCalloutImages.get(callout);
-
+        
                 if (highResImage?.complete) {
                     ctx.drawImage(highResImage, destPoint.x, destPoint.y, destWidth, destHeight);
                 }
-
-                if (sourcePageIndex === pageIndex) { // Draw arrow only for same-page callouts
+        
+                if (sourcePageIndex === pageIndex) { // Draw arrow
                     const sourceCenter = { x: sourceRect.x + sourceRect.width / 2, y: sourceRect.y + sourceRect.height / 2 };
                     const destCenter = { x: destPoint.x + destWidth / 2, y: destPoint.y + destHeight / 2 };
                     ctx.beginPath();
@@ -323,7 +323,7 @@
                     ctx.strokeStyle = '#cf6679';
                     ctx.lineWidth = 3 / transform.scale;
                     ctx.stroke();
-
+        
                     const angle = Math.atan2(destCenter.y - sourceCenter.y, destCenter.x - sourceCenter.x);
                     const arrowLength = 20 / transform.scale;
                     ctx.beginPath();
@@ -332,7 +332,7 @@
                     ctx.moveTo(destCenter.x, destCenter.y);
                     ctx.lineTo(destCenter.x - arrowLength * Math.cos(angle + Math.PI / 6), destCenter.y - arrowLength * Math.sin(angle + Math.PI / 6));
                     ctx.stroke();
-                } else { // Draw label for cross-page callouts
+                } else { // Draw label
                     ctx.font = `${12 / transform.scale}px ${getComputedStyle(document.body).fontFamily}`;
                     ctx.fillStyle = '#333';
                     ctx.textAlign = 'center';
@@ -341,6 +341,17 @@
                 }
             }
             ctx.restore();
+        
+            // Copy the off-screen canvas to the visible one
+            const visibleCtx = canvas.getContext('2d');
+            if (visibleCtx) {
+                if (canvas.width !== offscreenCanvas.width || canvas.height !== offscreenCanvas.height) {
+                    canvas.width = offscreenCanvas.width;
+                    canvas.height = offscreenCanvas.height;
+                }
+                visibleCtx.clearRect(0, 0, canvas.width, canvas.height);
+                visibleCtx.drawImage(offscreenCanvas, 0, 0);
+            }
         }, [page, transform, initialCallouts, highResCalloutImages, pageDimensions, t, pageIndex]);
 
         const requestRender = useCallback(() => {
@@ -394,14 +405,6 @@
             return () => window.removeEventListener('keydown', handleKeyDown);
         }, [interactionState, clipboardItem, getClampedTransform]);
         
-        useEffect(() => {
-            return () => {
-                if (animationFrameId.current) {
-                    cancelAnimationFrame(animationFrameId.current);
-                }
-            };
-        }, []);
-
         const clientToPageCoords = (coords: { clientX: number, clientY: number }): Point => {
             const viewportRect = viewportRef.current!.getBoundingClientRect();
             const mouseX = coords.clientX - viewportRect.left;
@@ -424,47 +427,30 @@
 
         const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
             e.preventDefault();
-            lastMouseEventRef.current = { clientX: e.clientX, clientY: e.clientY };
-
-            if (animationFrameId.current) return;
-
-            animationFrameId.current = requestAnimationFrame(() => {
-                const event = lastMouseEventRef.current;
-                if (!event) {
-                    animationFrameId.current = null;
-                    return;
-                }
-
-                if (interactionState === 'panning') {
-                    const dx = event.clientX - lastMousePos.current.x;
-                    const dy = event.clientY - lastMousePos.current.y;
-                    setTransform(prev => getClampedTransform({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-                    lastMousePos.current = { x: event.clientX, y: event.clientY };
-                } else if (interactionState === 'selecting' && selection) {
-                    setSelection(prev => ({ ...prev!, endPoint: clientToPageCoords(event) }));
-                }
-                
-                if (clipboardItem) {
-                    setPlacementPos({ x: event.clientX, y: event.clientY });
-                    const pos = clientToPageCoords(event);
-                    const { sourceRect, scale } = clipboardItem;
-                    const destWidth = sourceRect.width * scale;
-                    const destHeight = sourceRect.height * scale;
-                    const destX = pos.x - destWidth / 2;
-                    const destY = pos.y - destHeight / 2;
-                    const isValid = destX >= 0 && destY >= 0 && (destX + destWidth) <= pageDimensions.width && (destY + destHeight) <= pageDimensions.height;
-                    setIsPlacementValid(isValid);
-                }
-
-                animationFrameId.current = null;
-            });
+        
+            if (interactionState === 'panning') {
+                const dx = e.clientX - lastMousePos.current.x;
+                const dy = e.clientY - lastMousePos.current.y;
+                setTransform(prev => getClampedTransform({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+                lastMousePos.current = { x: e.clientX, y: e.clientY };
+            } else if (interactionState === 'selecting' && selection) {
+                setSelection(prev => ({ ...prev!, endPoint: clientToPageCoords(e) }));
+            }
+            
+            if (clipboardItem) {
+                setPlacementPos({ x: e.clientX, y: e.clientY });
+                const pos = clientToPageCoords(e);
+                const { sourceRect, scale } = clipboardItem;
+                const destWidth = sourceRect.width * scale;
+                const destHeight = sourceRect.height * scale;
+                const destX = pos.x - destWidth / 2;
+                const destY = pos.y - destHeight / 2;
+                const isValid = destX >= 0 && destY >= 0 && (destX + destWidth) <= pageDimensions.width && (destY + destHeight) <= pageDimensions.height;
+                setIsPlacementValid(isValid);
+            }
         };
         
         const handleMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
-                animationFrameId.current = null;
-            }
             if (interactionState === 'panning') {
                 setInteractionState('idle');
             } else if (interactionState === 'selecting' && selection) {
@@ -482,10 +468,6 @@
         };
 
         const handleMouseLeave = () => {
-             if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
-                animationFrameId.current = null;
-            }
             if(interactionState !== 'idle') setInteractionState('idle');
             if(clipboardItem) setIsPlacementValid(false);
         };
@@ -890,7 +872,7 @@
                         <button onClick={handleUndo} disabled={historyIndex === 0}>{t('undo')}</button>
                         <button onClick={handleRedo} disabled={historyIndex >= history.length - 1}>{t('redo')}</button>
                     </div>
-                    <p className="version-info">ver-2.7</p>
+                    <p className="version-info">ver-2.8</p>
                 </div>
             </aside>
 

@@ -35,6 +35,14 @@ body {
   overflow: hidden; /* Prevent the whole page from scrolling */
 }
 
+body.cross-page-placing .interactive-page-viewport {
+    cursor: none; /* The preview div will act as cursor */
+}
+body.cross-page-placing {
+    cursor: copy;
+}
+
+
 #root {
   width: 100%;
 }
@@ -65,6 +73,13 @@ body {
     color: var(--primary-color);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-action-btn,
 .lang-toggle {
     background-color: var(--surface-color);
     color: var(--text-secondary-color);
@@ -75,12 +90,33 @@ body {
     font-size: 0.9rem;
     font-weight: 600;
     transition: background-color 0.3s, color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
+.header-action-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+}
+
+.header-action-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.header-action-btn:hover:not(:disabled),
 .lang-toggle:hover {
     background-color: var(--primary-color);
     color: var(--text-primary-color);
 }
+
+.header-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 
 .main-content {
   display: grid;
@@ -91,24 +127,6 @@ body {
   min-height: 0; /* Crucial for child element scrolling in flexbox */
   position: relative; /* For positioning the toggle button */
   transition: grid-template-columns 0.3s ease-in-out, gap 0.3s ease-in-out;
-}
-
-.main-content.is-placing {
-    padding-top: 40px; /* Make space for the status bar */
-}
-
-.placing-status-bar {
-    position: fixed;
-    top: 68px; /* Below header */
-    left: 0;
-    width: 100%;
-    background-color: var(--primary-color);
-    color: white;
-    text-align: center;
-    padding: 0.5rem;
-    font-size: 0.9rem;
-    z-index: 100;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .panel-toggle-btn {
@@ -191,7 +209,7 @@ body {
 .upload-section, .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem; /* Increased gap for better separation */
 }
 
 h2 {
@@ -229,6 +247,10 @@ h2 {
   cursor: pointer;
 }
 
+.file-input-wrapper input[type="file"]:disabled {
+    cursor: not-allowed;
+}
+
 .file-name {
   margin-top: 0.5rem;
   font-size: 0.875rem;
@@ -252,24 +274,38 @@ h2 {
     color: var(--secondary-color);
 }
 
+.setting .styled-select {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary-color);
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23b3b3b3' class='bi bi-chevron-down' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1em;
+}
+
+.setting .styled-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--border-color);
+}
+
 .slider {
   width: 100%;
   accent-color: var(--primary-color);
 }
 
-.setting select {
-    width: 100%;
-    padding: 0.5rem;
-    background-color: var(--background-color);
-    color: var(--text-primary-color);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 0.9rem;
-}
-
 .add-page-btn {
+    width: 100%;
     padding: 0.75rem;
-    border: 1px solid var(--border-color);
+    border: none;
     background-color: var(--primary-color);
     color: var(--text-primary-color);
     border-radius: var(--border-radius);
@@ -279,9 +315,98 @@ h2 {
     transition: background-color 0.2s;
 }
 
-.add-page-btn:hover {
+.add-page-btn:hover:not(:disabled) {
     background-color: var(--primary-variant-color);
 }
+
+.add-page-btn:disabled {
+    background-color: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.placement-mode {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+}
+.placement-mode legend {
+    padding: 0 0.5rem;
+    font-weight: 500;
+    color: var(--text-secondary-color);
+}
+.placement-mode .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.placement-mode label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    border: 1px solid transparent;
+    border-radius: calc(var(--border-radius) - 2px);
+    cursor: pointer;
+    background-color: var(--background-color);
+    transition: border-color 0.2s;
+}
+.placement-mode label:has(input:checked) {
+    border-color: var(--primary-color);
+}
+.placement-mode input[type="radio"] {
+    display: none;
+}
+.placement-mode label span {
+    font-weight: 600;
+    color: var(--text-primary-color);
+}
+.placement-mode label .radio-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary-color);
+}
+.placement-mode:disabled {
+    opacity: 0.5;
+}
+.placement-mode:disabled label {
+    cursor: not-allowed;
+}
+
+.captured-detail-card {
+    border: 1px solid var(--primary-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    background-color: rgba(98, 0, 238, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+}
+.captured-detail-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    width: 100%;
+}
+.captured-detail-card img {
+    max-width: 100%;
+    border-radius: calc(var(--border-radius) - 4px);
+    border: 1px solid var(--border-color);
+}
+.captured-detail-card button {
+    width: 100%;
+    padding: 0.5rem;
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+.captured-detail-card button:hover {
+    filter: brightness(1.2);
+}
+
 
 .history-controls {
     display: flex;
@@ -387,7 +512,7 @@ h2 {
     background-color: var(--success-color);
 }
 
-.download-all-btn:hover {
+.download-all-btn:hover:not(:disabled) {
     background-color: #45a049;
 }
 
@@ -395,7 +520,7 @@ h2 {
     background-color: var(--primary-color);
 }
 
-.download-pdf-btn:hover {
+.download-pdf-btn:hover:not(:disabled) {
     background-color: var(--primary-variant-color);
 }
 
@@ -444,6 +569,7 @@ h2 {
   overflow: hidden;
   box-shadow: var(--box-shadow);
   background-color: var(--background-color);
+  aspect-ratio: 8.5 / 11;
 }
 
 .interactive-page-viewport {
@@ -470,9 +596,6 @@ h2 {
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     z-index: 30;
     background-color: var(--background-color);
-    border-radius: 4px;
-    border: 2px solid var(--secondary-color);
-    overflow: hidden;
 }
 
 .callout-preview img {
@@ -519,17 +642,47 @@ h2 {
 }
 
 
-.page-number-overlay {
+.page-info-overlay {
   position: absolute;
   top: 8px;
   left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 20;
+  pointer-events: none; /* Let clicks pass through the container */
+}
+
+.page-number {
   background-color: rgba(0, 0, 0, 0.7);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.8rem;
   font-weight: 500;
-  z-index: 20;
+}
+
+.duplicate-as-blank-btn {
+  background-color: rgba(30, 30, 30, 0.8);
+  color: var(--text-primary-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  pointer-events: all; /* Make the button clickable */
+}
+
+.duplicate-as-blank-btn:hover:not(:disabled) {
+    background-color: var(--primary-color);
+}
+
+.duplicate-as-blank-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .error-message {
@@ -571,12 +724,6 @@ h2 {
     .main-content.panel-hidden {
       grid-template-columns: 1fr; /* Keep single column layout on mobile */
     }
-    .placing-status-bar {
-        top: 90px;
-    }
-    .main-content.is-placing {
-        padding-top: 40px;
-    }
 }
 
 @media (max-width: 500px) {
@@ -600,9 +747,5 @@ h2 {
     .download-all-btn, .download-pdf-btn {
         width: 100%;
         text-align: center;
-    }
-    .placing-status-bar {
-        top: 110px;
-        position: absolute;
     }
 }

@@ -1,5 +1,4 @@
 
-
     import React, { useState, useCallback, useEffect, useRef } from 'react';
     import { createRoot } from 'react-dom/client';
 
@@ -177,6 +176,8 @@
         const viewportRef = useRef<HTMLDivElement>(null);
         const lastMousePos = useRef<Point>({ x: 0, y: 0 });
         const renderTimeoutRef = useRef<number | null>(null);
+        const animationFrameId = useRef<number | null>(null);
+        const lastMouseEventRef = useRef<{ clientX: number; clientY: number } | null>(null);
 
         const [page, setPage] = useState<any | null>(null);
         const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
@@ -392,11 +393,19 @@
             window.addEventListener('keydown', handleKeyDown);
             return () => window.removeEventListener('keydown', handleKeyDown);
         }, [interactionState, clipboardItem, getClampedTransform]);
+        
+        useEffect(() => {
+            return () => {
+                if (animationFrameId.current) {
+                    cancelAnimationFrame(animationFrameId.current);
+                }
+            };
+        }, []);
 
-        const clientToPageCoords = (e: React.MouseEvent): Point => {
+        const clientToPageCoords = (coords: { clientX: number, clientY: number }): Point => {
             const viewportRect = viewportRef.current!.getBoundingClientRect();
-            const mouseX = e.clientX - viewportRect.left;
-            const mouseY = e.clientY - viewportRect.top;
+            const mouseX = coords.clientX - viewportRect.left;
+            const mouseY = coords.clientY - viewportRect.top;
             return { x: (mouseX - transform.x) / transform.scale, y: (mouseY - transform.y) / transform.scale };
         };
 
@@ -414,28 +423,48 @@
         };
 
         const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-            if (interactionState === 'panning') {
-                const dx = e.clientX - lastMousePos.current.x;
-                const dy = e.clientY - lastMousePos.current.y;
-                setTransform(prev => getClampedTransform({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-                lastMousePos.current = { x: e.clientX, y: e.clientY };
-            } else if (interactionState === 'selecting' && selection) {
-                setSelection(prev => ({ ...prev!, endPoint: clientToPageCoords(e) }));
-            }
-            if (clipboardItem) {
-                setPlacementPos({x: e.clientX, y: e.clientY});
-                const pos = clientToPageCoords(e);
-                const { sourceRect, scale } = clipboardItem;
-                const destWidth = sourceRect.width * scale;
-                const destHeight = sourceRect.height * scale;
-                const destX = pos.x - destWidth / 2;
-                const destY = pos.y - destHeight / 2;
-                const isValid = destX >= 0 && destY >= 0 && (destX + destWidth) <= pageDimensions.width && (destY + destHeight) <= pageDimensions.height;
-                setIsPlacementValid(isValid);
-            }
+            e.preventDefault();
+            lastMouseEventRef.current = { clientX: e.clientX, clientY: e.clientY };
+
+            if (animationFrameId.current) return;
+
+            animationFrameId.current = requestAnimationFrame(() => {
+                const event = lastMouseEventRef.current;
+                if (!event) {
+                    animationFrameId.current = null;
+                    return;
+                }
+
+                if (interactionState === 'panning') {
+                    const dx = event.clientX - lastMousePos.current.x;
+                    const dy = event.clientY - lastMousePos.current.y;
+                    setTransform(prev => getClampedTransform({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+                    lastMousePos.current = { x: event.clientX, y: event.clientY };
+                } else if (interactionState === 'selecting' && selection) {
+                    setSelection(prev => ({ ...prev!, endPoint: clientToPageCoords(event) }));
+                }
+                
+                if (clipboardItem) {
+                    setPlacementPos({ x: event.clientX, y: event.clientY });
+                    const pos = clientToPageCoords(event);
+                    const { sourceRect, scale } = clipboardItem;
+                    const destWidth = sourceRect.width * scale;
+                    const destHeight = sourceRect.height * scale;
+                    const destX = pos.x - destWidth / 2;
+                    const destY = pos.y - destHeight / 2;
+                    const isValid = destX >= 0 && destY >= 0 && (destX + destWidth) <= pageDimensions.width && (destY + destHeight) <= pageDimensions.height;
+                    setIsPlacementValid(isValid);
+                }
+
+                animationFrameId.current = null;
+            });
         };
         
         const handleMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
+            if (animationFrameId.current) {
+                cancelAnimationFrame(animationFrameId.current);
+                animationFrameId.current = null;
+            }
             if (interactionState === 'panning') {
                 setInteractionState('idle');
             } else if (interactionState === 'selecting' && selection) {
@@ -450,6 +479,15 @@
                     onSelectForClipboard({ sourcePageIndex: pageIndex, sourceRect, scale: scaleFactor, dataUrl });
                 }
             }
+        };
+
+        const handleMouseLeave = () => {
+             if (animationFrameId.current) {
+                cancelAnimationFrame(animationFrameId.current);
+                animationFrameId.current = null;
+            }
+            if(interactionState !== 'idle') setInteractionState('idle');
+            if(clipboardItem) setIsPlacementValid(false);
         };
         
         const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -503,10 +541,7 @@
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
-                    onMouseLeave={() => { 
-                        if(interactionState !== 'idle') setInteractionState('idle');
-                        if(clipboardItem) setIsPlacementValid(false);
-                    }}
+                    onMouseLeave={handleMouseLeave}
                     onClick={handleClick}
                     onWheel={handleWheel}
                 >
@@ -816,19 +851,6 @@
                             <input type="range" id="scaleFactor" className="slider" min="1.5" max="10" step="0.5" value={scaleFactor} onChange={(e) => setScaleFactor(parseFloat(e.target.value))} disabled={!!clipboardItem}/>
                         </div>
                     </div>
-                    
-                    <div className="settings-section instructions">
-                        <h2>{t('instructionsHeader')}</h2>
-                        <ul>
-                            <li>{t('instruction1')}</li>
-                            <li>{t('instruction_place_anywhere')}</li>
-                            <li>{t('instruction_cancel')}</li>
-                            <li className="instruction-divider">{t('instruction_zoom')}</li>
-                            <li>{t('instruction_pan')}</li>
-                            <li>{t('instruction_move')}</li>
-                            <li>{t('instruction_reset')}</li>
-                        </ul>
-                    </div>
 
                     {pdfDoc && <div className="settings-section">
                         <h2>{t('createPage')}</h2>
@@ -848,6 +870,19 @@
                         </div>
                         <button className="add-page-btn" onClick={handleAddCustomPage}>{t('addPage')}</button>
                     </div>}
+                    
+                    <div className="settings-section instructions">
+                        <h2>{t('instructionsHeader')}</h2>
+                        <ul>
+                            <li>{t('instruction1')}</li>
+                            <li>{t('instruction_place_anywhere')}</li>
+                            <li>{t('instruction_cancel')}</li>
+                            <li className="instruction-divider">{t('instruction_zoom')}</li>
+                            <li>{t('instruction_pan')}</li>
+                            <li>{t('instruction_move')}</li>
+                            <li>{t('instruction_reset')}</li>
+                        </ul>
+                    </div>
 
                 </div>
                 <div className="panel-sticky-footer">
@@ -855,7 +890,7 @@
                         <button onClick={handleUndo} disabled={historyIndex === 0}>{t('undo')}</button>
                         <button onClick={handleRedo} disabled={historyIndex >= history.length - 1}>{t('redo')}</button>
                     </div>
-                    <p className="version-info">ver-2.6</p>
+                    <p className="version-info">ver-2.7</p>
                 </div>
             </aside>
 
